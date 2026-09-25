@@ -1,150 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cora GCN — Graph Classification Console</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cora Node Classifier</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-<header>
-  <svg id="node-field" viewBox="0 0 980 220" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
-    <g stroke="#232833" stroke-width="1">
-      <line x1="60" y1="40" x2="180" y2="90"/>
-      <line x1="180" y1="90" x2="140" y2="170"/>
-      <line x1="180" y1="90" x2="300" y2="60"/>
-      <line x1="300" y1="60" x2="420" y2="120"/>
-      <line x1="420" y1="120" x2="560" y2="70"/>
-      <line x1="560" y1="70" x2="680" y2="130"/>
-      <line x1="680" y1="130" x2="800" y2="80"/>
-      <line x1="800" y1="80" x2="900" y2="150"/>
-      <line x1="420" y1="120" x2="500" y2="190"/>
-      <line x1="140" y1="170" x2="260" y2="200"/>
-    </g>
-    <g fill="#5FE3C3">
-      <circle cx="60" cy="40" r="2.5"/>
-      <circle cx="180" cy="90" r="3"/>
-      <circle cx="140" cy="170" r="2.5"/>
-      <circle cx="300" cy="60" r="2.5"/>
-      <circle cx="420" cy="120" r="3"/>
-      <circle cx="560" cy="70" r="2.5"/>
-      <circle cx="680" cy="130" r="2.5"/>
-      <circle cx="800" cy="80" r="2.5"/>
-      <circle cx="900" cy="150" r="2.5"/>
-      <circle cx="500" cy="190" r="2"/>
-      <circle cx="260" cy="200" r="2"/>
-    </g>
-  </svg>
-  <div class="header-inner">
-    <p class="eyebrow">simple_gcn_cora · onnxruntime</p>
-    <h1>Cora <em>Graph</em> Console</h1>
-    <p class="subhead">Classify research papers from the CORA citation network into one of seven topics, using the trained GCN model — either by node index from the real dataset, or with a graph you provide yourself.</p>
-    <div class="status-row">
-      <span class="dot pending" id="status-dot"></span>
-      <span id="status-text">checking backend…</span>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <h1>Cora Node Classifier</h1>
+      <p>Sorts real research papers from the Cora citation network into one of seven topics — combining each paper's own words with who it cites.</p>
     </div>
-  </div>
-</header>
+    <div class="status" id="status">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text">connecting…</span>
+    </div>
+  </header>
 
-<main>
-  <nav class="tabs">
-    <button class="tab-btn active" data-tab="info">Model info</button>
-    <button class="tab-btn" data-tab="cora">Classify by node index</button>
-    <button class="tab-btn" data-tab="custom">Classify custom graph</button>
-  </nav>
+  <div class="legend" id="legend"></div>
+  <p class="legend-hint">Click a topic above to spotlight matching results.</p>
 
-  <!-- ============ TAB: INFO ============ -->
-  <section class="panel active" id="panel-info">
-    <p class="lede">What the model expects and returns, read live from <span style="font-family:var(--mono)">/info</span>.</p>
+  <div class="banner" id="error-banner"></div>
 
-    <div id="info-content">
-      <div class="grid-2">
-        <div class="stat"><span class="num">1433</span><span class="label">feature dimension</span></div>
-        <div class="stat"><span class="num">7</span><span class="label">topic classes</span></div>
-      </div>
+  <section class="query-card">
+    <div class="query-head">
+      <h2>Choose papers to classify</h2>
+      <span class="query-count" id="chip-count">0 selected</span>
+    </div>
 
-      <h2 class="section-title">Topic classes</h2>
-      <ul class="class-list" id="class-list"></ul>
+    <div class="chip-field" id="chip-field">
+      <div class="chips" id="chips"></div>
+      <input type="text" id="chip-input" class="mono" placeholder="type a node index (0–2707) and press Enter…" inputmode="numeric">
+    </div>
+    <p class="hint">Cora has 2,708 papers, indexed 0 through 2707. Add a few, or use a shortcut below.</p>
 
-      <h2 class="section-title">Inputs</h2>
-      <table class="io-table"><thead><tr><th>name</th><th>shape</th><th>type</th></tr></thead>
-        <tbody id="inputs-table"><tr><td colspan="3" class="hint">loading…</td></tr></tbody>
-      </table>
-
-      <h2 class="section-title">Outputs</h2>
-      <table class="io-table"><thead><tr><th>name</th><th>shape</th><th>type</th></tr></thead>
-        <tbody id="outputs-table"><tr><td colspan="3" class="hint">loading…</td></tr></tbody>
-      </table>
+    <div class="btn-row">
+      <button class="btn" id="classify-btn">Classify selected</button>
+      <button class="chip-btn" id="preset-first">First 10</button>
+      <button class="chip-btn" id="preset-random">5 random</button>
+      <button class="chip-btn" id="preset-clear">Clear</button>
     </div>
   </section>
 
-  <!-- ============ TAB: CORA NODE ============ -->
-  <section class="panel" id="panel-cora">
-    <p class="lede">Pick real papers from the CORA dataset by their node index and classify them with the trained model.</p>
+  <section id="results-section"></section>
 
-    <div class="card">
-      <div class="field">
-        <label for="cora-indices">Node indices — comma-separated</label>
-        <input type="text" id="cora-indices" value="0, 1, 2, 10, 100">
-        <p class="hint">Each index selects one paper's real citation-network neighborhood.</p>
-      </div>
-      <div class="btn-row">
-        <button class="btn" id="cora-submit">Classify nodes</button>
-      </div>
-    </div>
+  <footer>
+    <div class="foot-stats" id="foot-stats">2,708 papers · 5,429 citation edges · 1,433 word features · 7 topics</div>
+    <div class="foot-note">reading live from this model's own API · <span class="mono">/info /health /predict/cora_node</span></div>
+  </footer>
 
-    <div id="cora-msg"></div>
-    <div class="results" id="cora-results"></div>
-  </section>
-
-  <!-- ============ TAB: CUSTOM ============ -->
-  <section class="panel" id="panel-custom">
-    <p class="lede">Send your own node feature vectors (length 1433 each) and, optionally, your own edge list. Use the generator below for a quick synthetic graph to test the endpoint.</p>
-
-    <div class="card">
-      <div class="field-row">
-        <div class="field">
-          <label for="gen-nodes">Nodes to generate</label>
-          <input type="number" id="gen-nodes" value="4" min="1" max="50">
-        </div>
-        <div class="field">
-          <label for="gen-mode">Feature pattern</label>
-          <select id="gen-mode" style="width:100%;background:var(--bg-inset);border:1px solid var(--border);color:var(--text);font-family:var(--mono);font-size:13.5px;padding:11px 12px;border-radius:2px;">
-            <option value="sparse">sparse binary (bag-of-words like)</option>
-            <option value="random">dense random [0,1)</option>
-          </select>
-        </div>
-        <button class="btn secondary" id="gen-btn">Generate</button>
-      </div>
-
-      <h2 class="section-title" style="margin-top:26px;">node_features</h2>
-      <div class="field">
-        <textarea id="custom-features" placeholder="[[0, 0, 1, 0, ...], [0, 1, 0, 0, ...]]  — each row must have exactly 1433 values" style="min-height:120px;"></textarea>
-        <p class="hint" id="feature-hint">no features loaded yet — use Generate, or paste your own JSON array of arrays</p>
-      </div>
-
-      <h2 class="section-title">edge_indices <span style="color:var(--text-faint);font-weight:400;">— optional, shape [2, num_edges]</span></h2>
-      <div class="field">
-        <textarea id="custom-edges" placeholder="[[0, 1, 2], [1, 2, 0]]  — leave blank to self-connect every node"></textarea>
-      </div>
-
-      <div class="btn-row">
-        <button class="btn" id="custom-submit">Classify graph</button>
-      </div>
-    </div>
-
-    <div id="custom-msg"></div>
-    <div class="results" id="custom-results"></div>
-  </section>
-</main>
-
-<footer>
-  cora-gcn-console · calls <span style="color:var(--text-dim)">/health</span>, <span style="color:var(--text-dim)">/info</span>, <span style="color:var(--text-dim)">/predict</span>, <span style="color:var(--text-dim)">/predict/cora_node</span> on this origin
-</footer>
+</div>
 
 <script src="app.js"></script>
 </body>
